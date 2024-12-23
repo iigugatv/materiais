@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestor de materiais</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #333;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .container {
+      width: 80%;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #333;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background-color: #555;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+    }
+
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+
+    .delete-button {
+      background-color: red;
+      color: white;
+      border: none;
+      cursor: pointer;
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error {
+      color: red;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gestor de materiais</h1>
+  </header>
+
+  <div class="container">
+    <div id="loginContainer">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="username">Nome de Usuário</label>
+          <input type="text" id="username" placeholder="Digite seu nome de usuário" required>
+        </div>
+        <div class="form-group"> 
+          <label for="password">Senha</label>
+          <input type="password" id="password" placeholder="Digite sua senha" required>
+        </div>
+        <button type="submit">Entrar</button>
+        <div id="loginError" class="error hidden">Credenciais incorretas. Tente novamente.</div>
+      </form>
+    </div>
+
+
+    <div id="materialsContainer" class="hidden">
+      <h2>Adicionar Material</h2>
+      <form id="materialForm">
+        <div class="form-group">
+          <label for="name">Nome do Material</label>
+          <input type="text" id="name" placeholder="Digite o nome do material" required>
+        </div>
+        <div class="form-group">
+          <label for="description">Descrição</label>
+          <input type="text" id="description" placeholder="Digite a descrição" required>
+        </div>
+        <div class="form-group">
+          <label for="image">URL da Imagem</label>
+          <input type="text" id="image" placeholder="Cole a URL da imagem" required>
+        </div>
+        <button type="submit">Adicionar Material</button>
+      </form>
+
+      <h2>Materiais Cadastrados</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Imagem</th>
+            <th>Nome</th>
+            <th>Descrição</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="materialsList">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDyMagoKs8596xCZ1a82OTt3Shstcuymmc",
+      authDomain: "materiais-9c4e4.firebaseapp.com",
+      databaseURL: "https://materiais-9c4e4-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "materiais-9c4e4",
+      storageBucket: "materiais-9c4e4.firebasestorage.app",
+      messagingSenderId: "2684605447",
+      appId: "1:2684605447:web:d6483fc49db67168df46a2"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+
+    const usersRef = db.ref('users/users'); 
+    const materialsRef = db.ref('materials');
+
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      usersRef.once('value', (snapshot) => {
+        const users = snapshot.val();
+        let validUser = false;
+
+        for (let id in users) {
+          if (users[id].username === username && users[id].password === password) {
+            validUser = true;
+            break;
+          }
+        }
+
+        if (validUser) {
+          document.getElementById('loginContainer').classList.add('hidden');
+          document.getElementById('materialsContainer').classList.remove('hidden');
+        } else {
+          document.getElementById('loginError').classList.remove('hidden');
+        }
+      });
+    });
+
+    document.getElementById('materialForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const name = document.getElementById('name').value;
+      const description = document.getElementById('description').value;
+      const image = document.getElementById('image').value;
+
+      const newMaterial = {
+        name,
+        description,
+        image
+      };
+
+      materialsRef.push(newMaterial);
+
+      document.getElementById('materialForm').reset();
+    });
+
+    materialsRef.on('value', (snapshot) => {
+      const materialsList = document.getElementById('materialsList');
+      materialsList.innerHTML = '';
+
+      const materials = snapshot.val();
+      for (let id in materials) {
+        const material = materials[id];
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><img src="${material.image}" alt="${material.name}" width="100"></td>
+          <td>${material.name}</td>
+          <td>${material.description}</td>
+          <td>
+            <button class="delete-button" onclick="deleteMaterial('${id}')">Excluir</button>
+          </td>
+        `;
+        materialsList.appendChild(row);
+      }
+    });
+
+    function deleteMaterial(id) {
+      materialsRef.child(id).remove();
+    }
+  </script>
+</body>
+</html>
